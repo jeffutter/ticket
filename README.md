@@ -111,6 +111,8 @@ git add .tickets
 git commit -am "ditch beads"
 ```
 
+For a thorough system-wide Beads cleanup, see [banteg's uninstall script](https://gist.github.com/banteg/1a539b88b3c8945cd71e4b958f319d8d).
+
 ## License
 
 MIT
