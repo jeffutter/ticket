@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-01-04
 
 ### Added
 - `--parent` flag for `create` command to set parent ticket
