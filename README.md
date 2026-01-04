@@ -35,6 +35,20 @@ cd ticket && ln -s "$PWD/ticket" ~/.local/bin/tk
 
 **Or** just copy `ticket` to somewhere in your PATH.
 
+## Requirements
+
+`tk` is a portable bash script requiring only coreutils, so it works out of the box on any POSIX system with bash installed. The `query` command requires `jq`. Uses `rg` (ripgrep) if available, falls back to `grep`.
+
+## Agent Setup
+
+Add this line to your `CLAUDE.md` or `AGENTS.md`:
+
+```
+This project uses a CLI ticket system for task management. Run `tk help` when you need to use it.
+```
+
+Claude Opus picks it up naturally from there. Other models may need additional guidance.
+
 ## Usage
 
 ```bash
