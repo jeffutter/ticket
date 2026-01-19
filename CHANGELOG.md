@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-01-18
 
 ### Added
 - Support `TICKETS_DIR` environment variable for custom tickets directory location
