@@ -1471,6 +1471,113 @@ cmd_migrate_beads() {
     '
 }
 
+cmd_prime() {
+    # Check if .tickets directory exists
+    if find_tickets_dir >/dev/null 2>&1; then
+        cat << 'EOF'
+# Ticket Workflow Context
+
+> **Note**: Tickets stored in `.tickets/` directory, automatically committed with code changes
+
+# 🚨 SESSION CLOSE PROTOCOL 🚨
+
+**CRITICAL**: Before saying "done" or "complete", you MUST run this checklist:
+
+```
+[ ] 1. tk list                  (verify ticket status)
+[ ] 2. git status               (check what changed)
+[ ] 3. git add .tickets/        (stage ticket changes)
+[ ] 4. git add <files>          (stage code changes)
+[ ] 5. git commit -m "..."      (commit everything)
+```
+
+**NEVER skip this.** Work is not done until pushed.
+
+## Core Rules
+- Track strategic work in tickets (multi-session, dependencies, discovered work)
+- Use `tk create` for issues, TodoWrite for simple single-session execution
+- When in doubt, prefer tk—persistence you don't need beats lost context
+- Git workflow: tickets in `.tickets/` must be committed and pushed
+- Session management: check `tk ready` for available work
+
+## Essential Commands
+
+### Finding Work
+- `tk ready` - Show tickets ready to work (no blockers)
+- `tk list --status=open` - All open tickets
+- `tk list --status=in_progress` - Your active work
+- `tk blocked` - Show all blocked tickets
+- `tk closed --limit=20` - Recently closed tickets
+- `tk show <id>` - Detailed ticket view with dependencies
+
+### Creating & Updating
+- `tk create "Title" --type=task|bug|feature --priority=2` - New ticket
+  - Priority: 0-4 (0=highest/critical, 2=medium, 4=lowest/backlog)
+  - Types: bug, feature, task, epic, chore
+- `tk create "Title" -d "Description" --design "Design notes" --acceptance "Criteria"`
+- `tk create "Title" --parent <id> --tags ui,backend` - With parent/tags
+- `tk start <id>` - Claim work (sets status to in_progress)
+- `tk close <id>` - Mark complete
+- `tk reopen <id>` - Reopen closed ticket
+- `tk status <id> <status>` - Update status (open|in_progress|closed)
+- `tk edit <id>` - Edit ticket in $EDITOR (use for complex updates)
+- `tk add-note <id> "text"` - Add timestamped note
+- **Tip**: When creating multiple tickets, create them sequentially or use parallel tool calls
+- **WARNING**: `tk edit` opens $EDITOR (vim/nano) which blocks agents - avoid in automation
+
+### Dependencies & Blocking
+- `tk dep <id> <dep-id>` - Add dependency (id depends on dep-id)
+- `tk dep tree <id>` - Show dependency tree for ticket
+- `tk dep tree --full <id>` - Show full tree without deduplication
+- `tk dep cycle` - Find dependency cycles in open tickets
+- `tk undep <id> <dep-id>` - Remove dependency
+- `tk blocked` - Show all blocked tickets
+- `tk show <id>` - See what's blocking/blocked by this ticket
+
+### Linking & Querying
+- `tk link <id1> <id2> [id3...]` - Link tickets together (symmetric)
+- `tk unlink <id1> <id2>` - Remove link between tickets
+- `tk query` - Output all tickets as JSON
+- `tk query 'jq-filter'` - Query tickets with jq filter
+
+## Common Workflows
+
+**Starting work:**
+```bash
+tk ready           # Find available work
+tk show <id>       # Review ticket details
+tk start <id>      # Claim it
+```
+
+**Completing work:**
+```bash
+tk close <id>                    # Close completed ticket
+git add .tickets/ <code-files>   # Stage all changes
+git commit -m "Implement feature X"
+git push                         # Push to remote
+```
+
+**Creating dependent work:**
+```bash
+tk create "Implement feature X" --type=feature
+# Note the returned ID (e.g., nw-abc1)
+tk create "Write tests for X" --type=task
+# Note the returned ID (e.g., nw-def2)
+tk dep nw-def2 nw-abc1  # Tests depend on feature (feature blocks tests)
+```
+
+**Finding blockers:**
+```bash
+tk blocked           # See all blocked tickets
+tk dep cycle         # Find dependency cycles
+tk dep tree <id>     # Visualize dependencies
+```
+EOF
+    fi
+    # If not found, exit silently
+    return 0
+}
+
 cmd_help() {
     local cmd
     cmd=$(basename "$0")
@@ -1509,6 +1616,7 @@ Commands:
   add-note <id> [text]     Append timestamped note (or pipe via stdin)
   query [jq-filter]        Output tickets as JSON, optionally filtered
   migrate-beads            Import tickets from .beads/issues.jsonl
+  prime                    Output workflow context (for AI agents)
 
 Tickets stored as markdown files in .tickets/
 Supports partial ID matching (e.g., '$cmd show 5c4' matches 'nw-5c46')
@@ -1516,9 +1624,9 @@ EOF
 }
 
 # Main dispatch
-# Initialize tickets dir (skip for help)
+# Initialize tickets dir (skip for help and prime)
 case "${1:-help}" in
-    help|--help|-h) ;;
+    help|--help|-h|prime) ;;
     *) init_tickets_dir "${1:-}" || exit 1 ;;
 esac
 
@@ -1541,6 +1649,7 @@ case "${1:-help}" in
     add-note) shift; cmd_add_note "$@" ;;
     query) shift; cmd_query "$@" ;;
     migrate-beads) shift; cmd_migrate_beads "$@" ;;
+    prime) shift; cmd_prime "$@" ;;
     help|--help|-h) cmd_help ;;
     *)
         echo "Unknown command: $1" >&2
