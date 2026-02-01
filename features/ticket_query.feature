@@ -56,3 +56,13 @@ Feature: Ticket Query
     And the JSONL tags field should be a JSON array
     And the JSONL tags field should contain "simplification-opportunity"
     And the JSONL tags field should contain "refactor"
+
+  Scenario: Query handles markdown horizontal rules
+    Given a ticket exists with ID "query-001" and title "Ticket with horizontal rule"
+    And ticket "query-001" has markdown content with horizontal rule
+    When I run "ticket query"
+    Then the command should succeed
+    And the output should be valid JSONL
+    And the JSONL output should have field "id"
+    And the JSONL output should have field "status"
+    And the JSONL should have exactly 7 fields
