@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `completion` command to generate shell completions (`ticket completion fish`)
+
 ## [0.3.1] - 2026-01-28
 
 ### Added

@@ -86,9 +86,21 @@ Commands:
   add-note <id> [text]     Append timestamped note (or pipe via stdin)
   query [jq-filter]        Output tickets as JSON, optionally filtered
   migrate-beads            Import tickets from .beads/issues.jsonl
+  completion <shell>       Output shell completions (fish)
 
 Searches parent directories for .tickets/ (override with TICKETS_DIR env var)
 Supports partial ID matching (e.g., 'tk show 5c4' matches 'nw-5c46')
+```
+
+## Shell Completions
+
+**Fish:**
+```bash
+# Try it out
+ticket completion fish | source
+
+# Install permanently
+ticket completion fish > ~/.config/fish/completions/tk.fish
 ```
 
 ## Testing

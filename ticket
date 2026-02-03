@@ -1586,6 +1586,142 @@ EOF
     return 0
 }
 
+cmd_completion() {
+    local shell="${1:-}"
+    if [ -z "$shell" ]; then
+        echo "Usage: $(basename "$0") completion <shell>" >&2
+        echo "Supported shells: fish" >&2
+        return 1
+    fi
+    case "$shell" in
+        fish) _completion_fish ;;
+        *)
+            echo "Unsupported shell: $shell" >&2
+            echo "Supported shells: fish" >&2
+            return 1
+            ;;
+    esac
+}
+
+_completion_fish() {
+    cat <<'FISH_COMPLETIONS'
+# Fish completions for ticket/tk
+
+function __ticket_dir
+    set -l dir (pwd)
+    if set -q TICKETS_DIR; and test -d "$TICKETS_DIR"
+        echo "$TICKETS_DIR"
+        return 0
+    end
+    while test "$dir" != /
+        if test -d "$dir/.tickets"
+            echo "$dir/.tickets"
+            return 0
+        end
+        set dir (dirname "$dir")
+    end
+    return 1
+end
+
+function __ticket_ids
+    set -l tdir (__ticket_dir); or return
+    for f in $tdir/*.md
+        if test -f "$f"
+            string replace -r '.*/(.*)\.md$' '$1' -- "$f"
+        end
+    end
+end
+
+function __ticket_assignees
+    set -l tdir (__ticket_dir); or return
+    awk -F': ' '/^assignee:/{print $2}' $tdir/*.md 2>/dev/null | sort -u
+end
+
+function __ticket_tags
+    set -l tdir (__ticket_dir); or return
+    awk '/^tags: \[/{gsub(/^tags: \[|\]$/, ""); gsub(/[" ]/, ""); split($0, a, ","); for(i in a) if(a[i]!="") print a[i]}' $tdir/*.md 2>/dev/null | sort -u
+end
+
+function __ticket_needs_command
+    set -l cmd (commandline -opc)
+    test (count $cmd) -eq 1
+end
+
+function __ticket_using_command
+    set -l cmd (commandline -opc)
+    test (count $cmd) -ge 2; and contains -- $cmd[2] $argv
+end
+
+function __ticket_dep_needs_subcommand
+    set -l cmd (commandline -opc)
+    test (count $cmd) -eq 2; and test "$cmd[2]" = dep
+end
+
+for __ticket_cmd in ticket tk
+    # Disable file completions by default
+    complete -c $__ticket_cmd -f
+
+    # Subcommands
+    complete -c $__ticket_cmd -n __ticket_needs_command -a create -d 'Create ticket'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a start -d 'Set status to in_progress'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a close -d 'Set status to closed'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a reopen -d 'Set status to open'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a status -d 'Update status'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a dep -d 'Manage dependencies'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a undep -d 'Remove dependency'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a link -d 'Link tickets together'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a unlink -d 'Remove link'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a ls -d 'List tickets'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a list -d 'List tickets'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a ready -d 'List ready tickets'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a blocked -d 'List blocked tickets'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a closed -d 'List closed tickets'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a show -d 'Display ticket'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a edit -d 'Open ticket in editor'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a add-note -d 'Append note to ticket'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a query -d 'Output tickets as JSON'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a migrate-beads -d 'Import from beads'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a prime -d 'Output workflow context'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a completion -d 'Output shell completions'
+    complete -c $__ticket_cmd -n __ticket_needs_command -a help -d 'Show help'
+
+    # Ticket ID completions for commands that take IDs
+    complete -c $__ticket_cmd -n '__ticket_using_command start close reopen show edit add-note' -a '(__ticket_ids)' -d 'Ticket ID'
+    complete -c $__ticket_cmd -n '__ticket_using_command status undep link unlink' -a '(__ticket_ids)' -d 'Ticket ID'
+
+    # status command: second arg is a status value
+    complete -c $__ticket_cmd -n '__ticket_using_command status' -a 'open in_progress closed' -d 'Status'
+
+    # dep subcommands
+    complete -c $__ticket_cmd -n __ticket_dep_needs_subcommand -a tree -d 'Show dependency tree'
+    complete -c $__ticket_cmd -n __ticket_dep_needs_subcommand -a cycle -d 'Find dependency cycles'
+    complete -c $__ticket_cmd -n __ticket_dep_needs_subcommand -a '(__ticket_ids)' -d 'Ticket ID'
+    complete -c $__ticket_cmd -n '__ticket_using_command dep' -a '(__ticket_ids)' -d 'Ticket ID'
+    complete -c $__ticket_cmd -n '__ticket_using_command dep' -l full -d 'Disable dedup in tree'
+
+    # create flags
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -s d -l description -r -d 'Description text'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -l design -r -d 'Design notes'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -l acceptance -r -d 'Acceptance criteria'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -s t -l type -r -a 'bug feature task epic chore' -d 'Ticket type'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -s p -l priority -r -a '0 1 2 3 4' -d 'Priority (0=highest)'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -s a -l assignee -r -a '(__ticket_assignees)' -d 'Assignee'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -l external-ref -r -d 'External reference'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -l parent -r -a '(__ticket_ids)' -d 'Parent ticket'
+    complete -c $__ticket_cmd -n '__ticket_using_command create' -l tags -r -a '(__ticket_tags)' -d 'Tags'
+
+    # Filter flags for listing commands
+    complete -c $__ticket_cmd -n '__ticket_using_command ls list ready blocked closed' -s a -r -a '(__ticket_assignees)' -d 'Filter by assignee'
+    complete -c $__ticket_cmd -n '__ticket_using_command ls list ready blocked closed' -s T -r -a '(__ticket_tags)' -d 'Filter by tag'
+    complete -c $__ticket_cmd -n '__ticket_using_command ls list' -l status -r -a 'open in_progress closed' -d 'Filter by status'
+    complete -c $__ticket_cmd -n '__ticket_using_command closed' -l limit -r -d 'Max tickets to show'
+
+    # completion subcommand
+    complete -c $__ticket_cmd -n '__ticket_using_command completion' -a fish -d 'Fish shell'
+end
+FISH_COMPLETIONS
+}
+
 cmd_help() {
     local cmd
     cmd=$(basename "$0")
@@ -1625,6 +1761,7 @@ Commands:
   query [jq-filter]        Output tickets as JSON, optionally filtered
   migrate-beads            Import tickets from .beads/issues.jsonl
   prime                    Output workflow context (for AI agents)
+  completion <shell>       Output shell completions (fish)
 
 Tickets stored as markdown files in .tickets/
 Supports partial ID matching (e.g., '$cmd show 5c4' matches 'nw-5c46')
@@ -1634,7 +1771,7 @@ EOF
 # Main dispatch
 # Initialize tickets dir (skip for help and prime)
 case "${1:-help}" in
-    help|--help|-h|prime) ;;
+    help|--help|-h|prime|completion) ;;
     *) init_tickets_dir "${1:-}" || exit 1 ;;
 esac
 
@@ -1658,6 +1795,7 @@ case "${1:-help}" in
     query) shift; cmd_query "$@" ;;
     migrate-beads) shift; cmd_migrate_beads "$@" ;;
     prime) shift; cmd_prime "$@" ;;
+    completion) shift; cmd_completion "$@" ;;
     help|--help|-h) cmd_help ;;
     *)
         echo "Unknown command: $1" >&2
