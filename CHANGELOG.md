@@ -1,9 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.2] - 2026-02-03
 
-### Added
-- `completion` command to generate shell completions (`ticket completion fish`)
+### Fixed
+- Ticket ID lookup now trims leading/trailing whitespace (fixes issue with AI agents passing extra spaces)
 
 ## [0.3.1] - 2026-01-28
 
